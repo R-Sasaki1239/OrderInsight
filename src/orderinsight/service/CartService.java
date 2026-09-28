@@ -18,7 +18,7 @@ public class CartService {
 	    this.productRepository = productRepository;
 	}
 	
-	//よくわからん(カートを取得かなければ作る)
+	//カートを取得かなければ作る
 	public Cart getOrCreateCart(User user) {
 		Cart cart = cartMap.get(user.getUserId());
 		if (cart == null) {
@@ -41,7 +41,7 @@ public class CartService {
 		
 		Cart cart = getOrCreateCart(user);
 		
-		//わからん(カート内での在庫の上限確認)
+//		カート内での在庫の上限確認
 		int currentQuantityInCart = 0;
 		for (CartItem cartitem : cart.getItems()) {
 			if (cartitem.getProductId() == productId) {
@@ -56,12 +56,8 @@ public class CartService {
 		cart.addItem(productId, quantity);
 		return true;
 	}
-	
-	//カート取得
-	public Cart getCart(User user) {
-		return getOrCreateCart(user);
-	}
 
+//	カートから一件削除
 	public void removeFromCart(User user, int productId) {
 		Cart cart = cartMap.get(user.getUserId());
 		if (cart != null) {

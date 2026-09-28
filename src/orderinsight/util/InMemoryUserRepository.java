@@ -12,28 +12,62 @@ public class InMemoryUserRepository implements UserRepository{
 	private final Map<Integer, User> userMap = new HashMap<Integer, User>();
 	
 	public InMemoryUserRepository() {
-		User admin = new User(
+		User admin1 = new User(
 			1,
 			"admin",
-			"管理者",
-			"sasaki0818",
+			"admin",
+			"password",
 			"神奈川県横浜市",
-			"admin@example.com",
+			"adminemail",
 			0,
 			"ADMIN"
 		);
-		User user = new User(
+		User admin2 = new User(
 			2,
-			"山田太郎",
-			"taro",
-			"pass123",
-			"東京都新宿区",
-			"taro@example.com",
+			"あ",
+			"あ",
+			"あ",
+			"あ",
+			"あ",
+			0,
+			"ADMIN"
+		);
+		User user1 = new User(
+			3,
+			"佐々木瞭",
+			"",
+			"password",
+			"日本",
+			"useremail",
 			0,
 			"USER"
 		);
-		save(admin);
-		save(user);
+		User user2 = new User(
+			4,
+			"あ",
+			"あ",
+			"あ",
+			"あ",
+			"あ",
+			0,
+			"USER"
+		);
+		User user3 = new User(
+			5,
+			"鈴木",
+			"鈴木",
+			"suzuki",
+			"日本",
+			"suzuki@email",
+			0,
+			"USER"
+		);
+		
+		save(admin1);
+		save(admin2);
+		save(user1);
+		save(user2);
+		save(user3);
 	}
 	
 	//userIdで指定して情報見る
@@ -43,6 +77,7 @@ public class InMemoryUserRepository implements UserRepository{
 	}
 	
 //	ログインでemailでpasswordの確認用
+//	Userの方で全ての情報あるいはnullを返す
 	@Override
 	public User findByEmail(String email) {
 		for (User user : userMap.values()) {

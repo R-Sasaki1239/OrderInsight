@@ -28,13 +28,21 @@ public class ProductService {
 	//販売停止中の商品一覧
 	public List<Product> getInactiveProducts(){
 		return productRepository.findAll().stream()
-				.filter(p -> !p.isActive())
+				.filter(product -> !product.isActive())
 				.collect(Collectors.toList());
 	}
 	
 	//productIdで一件取得
 	public Product getProductById(int productId) {
 		return productRepository.findById(productId);
+	}
+	
+//	productNameで一件取得
+	public Product getProductByName(String name) {
+		return productRepository.findAll().stream()
+				.filter(product -> product.getProductName().equals(name))
+				.findFirst()
+				.orElse(null);
 	}
 	
 	//productの新規登録
@@ -47,7 +55,7 @@ public class ProductService {
 	}
 	
 	//更新
-	public boolean updateProduct(int productId, String name, int price, int stock) {
+	public boolean updateProduct(int productId, String name, int price, int stock, boolean active) {
 		Product existing = productRepository.findById(productId);
 		if (existing == null) {
 		    return false;
@@ -56,6 +64,7 @@ public class ProductService {
 		existing.setProductName(name);
 		existing.setProductPrice(price);
 		existing.setProductStock(stock);
+		existing.setActive(active);
 		
 		productRepository.save(existing);
 		return true;

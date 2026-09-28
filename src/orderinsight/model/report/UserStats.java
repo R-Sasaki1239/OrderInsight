@@ -14,7 +14,6 @@ public class UserStats {
 
 	public UserStats(int userId, String name, String address, String email, int totalSpent, int orderCount,
 			double salesRatio, String role, String createdAt) {
-		super();
 		this.userId = userId;
 		this.name = name;
 		this.address = address;

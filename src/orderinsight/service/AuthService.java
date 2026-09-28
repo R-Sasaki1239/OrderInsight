@@ -11,12 +11,17 @@ public class AuthService {
 		this.userRepository = userRepository;
 	}
 	
+	
+	public boolean emailCheck(String email) {
+		User user = userRepository.findByEmail(email);
+		
+		return user != null;
+	}
+	
 	//	ログイン処理
 	public boolean login(String email, String password) {
 		User user = userRepository.findByEmail(email);
-		if (user == null) {
-			return false;
-		}
+		
 		if (!user.getPassword().equals(password)) {
 			return false;
 		}

@@ -1,11 +1,13 @@
 package orderinsight.controller;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
 
 import orderinsight.model.Cart;
 import orderinsight.model.CartItem;
 import orderinsight.model.Order;
+import orderinsight.model.OrderItem;
 import orderinsight.model.Product;
 import orderinsight.model.User;
 import orderinsight.model.report.ProductSalesStats;
@@ -66,20 +68,27 @@ public class Menu {
 	}
 //	ログイン
 	public void handleLogin() {
-		System.out.print("メールアドレス: ");
-		String email = scanner.nextLine();
-		System.out.print("パスワード: ");
+		String email;
+		while(true){
+			System.out.println("メールアドレスを入力してください");
+			email = scanner.nextLine();
+			
+			boolean emailCheck = authService.emailCheck(email);
+			if (emailCheck){
+				break;
+			}
+			System.out.println("そのメールアドレスは登録されていません。もう一度入力してください");
+		}
+		System.out.println("パスワードを入力してください");
 		String password = scanner.nextLine();
-	
 		boolean match = authService.login(email, password);
-		
 		if (!match) {
-			System.out.println("メールアドレスまたはパスワードが違います。");
+			System.out.println("パスワードが違います。");
 			return;
 		}
 		
 		User user = authService.getLoggedInUser();
-		System.out.println("ようこそ " + user.getNickname() + " さん");
+		System.out.println("ようこそ、" + user.getName() + "さん");
 		
 		if (authService.isAdmin()) {
 			showAdminMenu();
@@ -90,27 +99,55 @@ public class Menu {
 	
 	//新規登録
 	public void handleRegister() {
-		System.out.print("名前: ");
-		String name = scanner.nextLine();
-		System.out.print("ニックネーム: ");
-		String nickname = scanner.nextLine();
-		System.out.print("メールアドレス: ");
-		String email = scanner.nextLine();
-		
-		System.out.print("パスワード: ");
-		String password1 = scanner.nextLine();
-		System.out.print("パスワード（確認用）: ");
-		String password2 = scanner.nextLine();
-		if (!password1.equals(password2)) {
-		    System.out.println("パスワードが一致しません。もう一度やり直してください。");
-		    return;
+		String name;
+		while(true){
+			System.out.print("名前: ");
+			name = scanner.nextLine();
+			if (!name.isEmpty()) {
+				break;
+			}
+			System.out.println("名前は必須です。もう一度入力してください。");
 		}
 		
-		System.out.print("住所: ");
-		String address = scanner.nextLine();
+		System.out.print("ニックネーム: ");
+		String nickname = scanner.nextLine();
+		
+		String email;
+		while(true){
+			System.out.print("メールアドレス: ");
+			email = scanner.nextLine();
+			if (!email.isEmpty()) {
+				break;
+			}
+			System.out.println("メールアドレスは必須です。もう一度入力してください。");
+		}
+		
+		String password1;
+		String password2;
+		while(true) {
+			System.out.print("パスワード: ");
+			password1 = scanner.nextLine();
+			System.out.print("パスワード（確認用）: ");
+			password2 = scanner.nextLine();
+			if (password1.equals(password2)) {
+				break;
+			}
+			System.out.println("パスワードが一致しません。もう一度やり直してください。");
+		}
+		
+		String address;
+		while(true){
+			System.out.print("住所: ");
+			address = scanner.nextLine();
+			if (!address.isEmpty()) {
+				break;
+			}
+			System.out.println("住所が空です。もう一度入力してください。");
+		}
 		
 		User user = authService.register(name, nickname, password1, address, email);
-		System.out.println("登録が完了しました。ようこそ " + user.getNickname() + " さん");
+		System.out.println("登録が完了しました。");
+		System.out.println("ようこそ " + user.getName() + " さん");
 	
 		authService.login(email, password1);
 		if (authService.isAdmin()) {
@@ -121,7 +158,7 @@ public class Menu {
 	}
 
     //管理者メニュー
-	//＊つまらない、動くよう
+	//つまらない、動く用
     private void showAdminMenu() {
         while (true) {
             System.out.println("\n=== 管理者メニュー ===");
@@ -130,9 +167,11 @@ public class Menu {
             System.out.println("3. 販売停止中の商品一覧を表示");
             System.out.println("4. 商品を新規登録");
             System.out.println("5. 商品情報を更新");
-            System.out.println("6. 商品を販売終了（論理削除）");
-            System.out.println("7. レポートメニュー");
-            System.out.println("8. ログアウトしてメインメニューに戻る");
+            System.out.println("6. 商品を販売終了");
+            System.out.println("7. 全注文を一覧表示");
+            System.out.println("8. 注文の明細を見る");
+            System.out.println("9. レポートメニュー");
+            System.out.println("10. ログアウトしてメインメニューに戻る");
             System.out.print("番号を選んでください: ");
 
             String input = scanner.nextLine();
@@ -157,9 +196,15 @@ public class Menu {
                 handleDeactivateProduct();
                 break;
             case "7":
+            	handleShowAllOrders();
+            	break;
+            case "8":
+            	handleShowOrderItems();
+            	break;
+            case "9":
                 showReportMenu();
                 break;
-            case "8":
+            case "10":
                 System.out.println("ログアウトします。");
                 authService.logout();
                 return;
@@ -169,7 +214,7 @@ public class Menu {
         }
     }
 
-    //商品一覧表示(userもできる)
+    //商品一覧(admin用)
     private void showProducts(List<Product> products, String title) {
         System.out.println("\n=== " + title + " ===");
         if (products.isEmpty()) {
@@ -177,13 +222,26 @@ public class Menu {
             return;
         }
         for (Product product : products) {
+        	String stockLabel;
+        	if (product.getProductStock() == 0) {
+				stockLabel = "売り切れ";
+			} else {
+				stockLabel = String.valueOf(product.getProductStock());
+			}
+        	String salesStatus;
+        	if (product.isActive()) {
+				salesStatus = "販売中";
+			} else {
+				salesStatus = "販売停止中";
+			}
             System.out.printf(
-                    "ID:%d | 名前:%s | 価格:%d | 在庫:%d | active:%b%n",
+                    "ID:%d | 名前:%s | 価格:%d | 在庫:%s | 販売状況:%s%n",
                     product.getProductId(),
                     product.getProductName(),
                     product.getProductPrice(),
-                    product.getProductStock(),
-                    product.isActive());
+                    stockLabel,
+                    salesStatus
+            );
         }
     }
 
@@ -195,7 +253,7 @@ public class Menu {
         int price = Integer.parseInt(scanner.nextLine());
         System.out.print("在庫数: ");
         int stock = Integer.parseInt(scanner.nextLine());
-        System.out.print("販売中にしますか？ (1:はい / 0:いいえ): ");
+        System.out.print("販売中にしますか？ (1:はい / 2:いいえ): ");
         boolean active = "1".equals(scanner.nextLine());
 
         Product product = productService.createProduct(name, price, stock, active);
@@ -204,37 +262,193 @@ public class Menu {
 
     // 商品更新
     private void handleUpdateProduct() {
-        System.out.print("更新したい商品のID: ");
-        int id = Integer.parseInt(scanner.nextLine());
-        Product product = productService.getProductById(id);
+        System.out.println("商品を検索する方法を選択してください");
+        System.out.println("1: 商品Id / 2: 商品名");
+        int choice;
+        try {
+        	choice = Integer.parseInt(scanner.nextLine());
+			
+		} catch (NumberFormatException e) {
+			System.out.println("数字で入力してください");
+			return;
+		}
+        
+        Product product = null;
+        
+        if (choice == 1) {
+			System.out.println("更新したい商品のId:");
+			String idInput = scanner.nextLine();
+			try {
+				int id = Integer.parseInt(idInput);
+				product = productService.getProductById(id);
+			} catch (NumberFormatException e) {
+				System.out.println("Idは数字で入力してください");
+				return;
+			}
+		} else if (choice == 2) {
+			System.out.println("更新したい商品の名前:");
+			String nameInput = scanner.nextLine();
+			product = productService.getProductByName(nameInput);
+		} else {
+			System.out.println("無効な選択です。");
+			return;
+		}
+        
         if (product == null) {
-            System.out.println("該当する商品がありません。");
-            return;
-        }
+			System.out.println("該当する商品がありません");
+			return;
+		}
 
-        System.out.println("現在の情報: " + product.getProductName() + " / 価格:" + product.getProductPrice() + " / 在庫:" + product.getProductStock());
+        System.out.println("現在の情報: " + product.getProductName() + " / 価格:" + product.getProductPrice() 
+        + " / 在庫:" + product.getProductStock()+ " / 販売状況:" + (product.isActive() ? "販売中" : "販売停止中"));
         System.out.print("新しい商品名（Enterで変更なし）: ");
-        String name = scanner.nextLine();
-        if (name.isEmpty()) {
-            name = product.getProductName();
+        String newName = scanner.nextLine();
+        if (newName.isEmpty()) {
+            newName = product.getProductName();
         }
         System.out.print("新しい価格（Enterで変更なし）: ");
         String priceInput = scanner.nextLine();
-        int price = priceInput.isEmpty() ? product.getProductPrice() : Integer.parseInt(priceInput);
+        int newPrice;
+        if(priceInput.isEmpty()) {
+        	newPrice = product.getProductPrice();
+        } else {
+			try {
+				newPrice = Integer.parseInt(priceInput);
+			} catch (NumberFormatException e) {
+				System.out.println("価格は数字で入力してください");
+				return;
+			}
+		}
         System.out.print("新しい在庫数（Enterで変更なし）: ");
         String stockInput = scanner.nextLine();
-        int stock = stockInput.isEmpty() ? product.getProductStock() : Integer.parseInt(stockInput);
+        int newStock;
+        if (stockInput.isEmpty()) {
+			newStock = product.getProductStock();
+		} else {
+			try {
+				newStock = Integer.parseInt(stockInput);
+			} catch (NumberFormatException e) {
+				System.out.println("在庫数は数字で入力してください");
+				return;
+			}
+		}
+        
+        System.out.print("販売状況を変更しますか？ (1:販売中 / 2:販売停止 / Enterで変更なし): ");
+        String activeInput = scanner.nextLine();
+        boolean newActive;
+        if (activeInput.isEmpty()) {
+            newActive = product.isActive();
+        } else if ("1".equals(activeInput)) {
+            newActive = true;
+        } else if ("2".equals(activeInput)) {
+            newActive = false; 
+        } else {
+            System.out.println("不正な入力です。更新できませんでした。");
+            newActive = product.isActive();
+        }
 
-        boolean ok = productService.updateProduct(id, name, price, stock);
+        boolean ok = productService.updateProduct(product.getProductId(),newName, newPrice, newStock,newActive);
         System.out.println(ok ? "更新しました。" : "更新に失敗しました。");
     }
 
     // 商品論理削除（販売終了）
     private void handleDeactivateProduct() {
-        System.out.print("販売終了にしたい商品のID: ");
-        int id = Integer.parseInt(scanner.nextLine());
+    	System.out.println("商品を検索する方法を選択してください");
+        System.out.println("1: 商品Id / 2: 商品名");
+        int choice;
+        try {
+        	choice = Integer.parseInt(scanner.nextLine());
+			
+		} catch (NumberFormatException e) {
+			System.out.println("数字で入力してください");
+			return;
+		}
+        
+        Product product = null;
+        
+        if (choice == 1) {
+			System.out.println("販売終了にしたい商品のId:");
+			String idInput = scanner.nextLine();
+			try {
+				int id = Integer.parseInt(idInput);
+				product = productService.getProductById(id);
+			} catch (NumberFormatException e) {
+				System.out.println("Idは数字で入力してください");
+				return;
+			}
+		} else if (choice == 2) {
+			System.out.println("販売終了にしたい商品の名前:");
+			String nameInput = scanner.nextLine();
+			product = productService.getProductByName(nameInput);
+		} else {
+			System.out.println("無効な選択です。");
+			return;
+		}
+        
+        if (product == null) {
+			System.out.println("該当する商品がありません");
+			return;
+		}
+        
+        int id = product.getProductId();
         boolean ok = productService.deleteProduct(id);
-        System.out.println(ok ? "商品ID " + id + " を販売終了にしました。" : "該当する商品がありません。");
+        System.out.println(ok
+                ? "商品「" + product.getProductName() + "」(ID " + id + ") を販売終了にしました。"
+                : "該当する商品がありません。");
+    }
+    
+    private void handleShowAllOrders() {
+        List<Order> orders = orderService.getAllOrders();
+
+        System.out.println("\n=== 全注文一覧 ===");
+        if (orders.isEmpty()) {
+            System.out.println("まだ注文がありません。");
+            return;
+        }
+
+        for (Order order : orders) {
+        	String formattedDateTime = order.getCreateDateTime().format(orderDtf);
+            System.out.printf(
+                    "注文ID:%d | ユーザーID:%d | 日時:%s | 金額:%d円 | 支払い方法:%d | 配送先:%s%n",
+                    order.getOrderId(),
+                    order.getOrderUserId(),
+                    formattedDateTime,
+                    order.getTotalAmount(),
+                    order.getPaymentMethod(),
+                    order.getShippingAddress()
+            );
+        }
+    }
+    
+    private void handleShowOrderItems() {
+    	System.out.println("明細をみたい注文を選択してください");
+    	String idInput = scanner.nextLine();
+    	int orderId;
+    	try {
+			orderId = Integer.parseInt(idInput);
+		} catch (NumberFormatException e) {
+			System.out.println("注文IDは数字で入力してください");
+			return;
+		}
+    	
+    	List<OrderItem> items = orderService.getOrderItemsByOrderId(orderId);
+    	System.out.println("\n=== 注文ID " + orderId + " の明細 ===");
+    	if (items.isEmpty()) {
+    		System.out.println("この注文には明細がありません。");
+    		return;
+        }
+    	for (OrderItem item : items) {
+            Product p = productService.getProductById(item.getItemId());
+            String name = (p != null) ? p.getProductName() : "(削除された商品)";
+
+            System.out.printf(
+                    "商品ID:%d | 名前:%s | 数量:%d | 小計:%d円%n",
+                    item.getItemId(),
+                    name,
+                    item.getItemQuantity(),
+                    item.getLineTotal()
+            );
+        }
     }
 
     //統計メニュー(仮)
@@ -244,8 +458,8 @@ public class Menu {
             System.out.println("\n=== レポートメニュー ===");
             System.out.println("1. 商品統計");
             System.out.println("2. 売上統計");
-            System.out.println("3. 顧客統計");
-            System.out.println("4. 顧客統計");
+            System.out.println("3. 顧客統計(ID順)");
+            System.out.println("4. 顧客統計(金額順)");
             System.out.println("5. 商品売上ランキング");
             System.out.println("6. 顧客金額ランキング");
             System.out.println("7. 管理者メニューに戻る");
@@ -283,17 +497,23 @@ public class Menu {
     private void printProductStats() {
         List<ProductStats> list = reportService.getProductStats();
         System.out.println("\n=== 商品統計 ===");
-        System.out.printf("ID | 名前 | 全体数 | 在庫 | 売れた数 | 割合 | active | 登録日時%n");
+        System.out.printf("ID | 名前 | 全体数 | 在庫 | 売れた数 | 売れた割合 | 販売状況 | 登録日時%n");
         for (ProductStats stats : list) {
+        	String salesStatus;
+            if (stats.isActive()) {
+                salesStatus = "販売中";
+            } else {
+                salesStatus = "販売停止中";
+            }
             System.out.printf(
-                    "%d | %s | %d | %d | %d | %.2f | %b | %s%n",
+                    "%d | %s | %d | %d | %d | %.2f%% | %s | %s%n",
                     stats.getProductId(),
                     stats.getName(),
                     stats.getTotalCount(),
                     stats.getStock(),
                     stats.getSoldCount(),
-                    stats.getSoldRatio(),
-                    stats.isActive(),
+                    stats.getSoldRatio() * 100,
+                    salesStatus,
                     stats.getCreatedAt()
             );
         }
@@ -306,13 +526,13 @@ public class Menu {
         System.out.printf("ID | 名前 | 価格 | 売れた数 | 売上合計 | 売上割合%n");
         for (ProductSalesStats stats : list) {
             System.out.printf(
-                    "%d | %s | %d | %d | %d | %.2f%n",
+                    "%d | %s | %d円 | %d | %d | %.2f%%%n",
                     stats.getProductId(),
                     stats.getName(),
                     stats.getPrice(),
                     stats.getSoldCount(),
                     stats.getSalesAmount(),
-                    stats.getSalesRatio()
+                    stats.getSalesRatio() * 100
             );
         }
     }
@@ -324,14 +544,14 @@ public class Menu {
         System.out.printf("ID | 名前 | 住所 | email | 使った金額 | 購入回数 | 売上割合 | 権限 | 登録日時%n");
         for (UserStats stats : list) {
             System.out.printf(
-                    "%d | %s | %s | %s | %d | %d | %.2f | %s | %s%n",
+                    "%d | %s | %s | %s%n  使った金額:%d円 | 購入回数:%d回 | 売り上げ割合:%.2f%% | %s | %s%n",
                     stats.getUserId(),
                     stats.getName(),
                     stats.getAddress(),
                     stats.getEmail(),
                     stats.getTotalSpent(),
                     stats.getOrderCount(),
-                    stats.getSalesRatio(),
+                    stats.getSalesRatio() * 100,
                     stats.getRole(),
                     stats.getCreatedAt()
             );
@@ -345,14 +565,14 @@ public class Menu {
         System.out.printf("ID | 名前 | 住所 | email | 使った金額 | 購入回数 | 売上割合 | 権限 | 登録日時%n");
         for (UserStats stats : list) {
             System.out.printf(
-                    "%d | %s | %s | %s | %d | %d | %.2f | %s | %s%n",
+                    "%d | %s | %s | %s%n  使った金額:%d円 | 購入回数:%d回 | 売り上げ割合:%.2f%% | %s | %s%n",
                     stats.getUserId(),
                     stats.getName(),
                     stats.getAddress(),
                     stats.getEmail(),
                     stats.getTotalSpent(),
                     stats.getOrderCount(),
-                    stats.getSalesRatio(),
+                    stats.getSalesRatio() * 100,
                     stats.getRole(),
                     stats.getCreatedAt()
             );
@@ -407,14 +627,16 @@ public class Menu {
             System.out.println("3. カートの中身を見る");
             System.out.println("4. カートから商品を削除");
             System.out.println("5. 注文を確定する");
-            System.out.println("6. ログアウトしてメインメニューに戻る");
-            System.out.print("番号を選んでください: ");
+            System.out.println("6. 注文履歴を見る");
+            System.out.println("7. 注文履歴の明細を見る");
+            System.out.println("8. ログアウトしてメインメニューに戻る");
+            System.out.print("番号を半角で入力してください: ");
 
             String input = scanner.nextLine();
 
             switch (input) {
             case "1":
-                showProducts(productService.getActiveProducts(), "販売中の商品");
+                showProducts(productService.getActiveProducts());
                 break;
             case "2":
                 handleAddToCart(user);
@@ -429,6 +651,12 @@ public class Menu {
                 handleCheckout(user);
                 break;
             case "6":
+            	handleShowOrderHistory(user);
+            	break;
+            case "7":
+            	handleShowOrderItemsForUser(user);
+            	break;
+            case "8":
                 System.out.println("ログアウトします。");
                 authService.logout();
                 return;
@@ -437,49 +665,125 @@ public class Menu {
             }
         }
     }
+    
+//    商品一覧(User用)
+    private void showProducts(List<Product> products) {
+		System.out.println("\n=== 販売中の商品 ===");
+		if (products.isEmpty()) {
+			System.out.println("販売中の商品はありません");
+			return;
+		}
+		for (Product product : products) {
+			String stockLabel;
+			if (product.getProductStock() == 0) {
+				stockLabel = "売り切れ";
+			} else {
+				stockLabel = String.valueOf(product.getProductStock());
+			}
+			System.out.printf(
+					"名前:%s | 価格:%d | 在庫:%s%n",
+                    product.getProductName(),
+                    product.getProductPrice(),
+                    stockLabel
+					);
+		}
+	}
 
     //カートに追加
-    //*強制的に商品一覧もあり
-    //id追加っておかしい名前がいい
     private void handleAddToCart(User user) {
-        System.out.print("商品ID: ");
-        int productId = Integer.parseInt(scanner.nextLine());
-        System.out.print("数量: ");
-        int quantity = Integer.parseInt(scanner.nextLine());
-
-        boolean ok = cartService.addToCart(user, productId, quantity);
-        System.out.println(ok ? "カートに追加しました。" : "カートに追加できませんでした。（在庫不足 or 商品なし）");
-    }
+    	System.out.println("\n=== 販売中の商品 ===");
+    	List<Product> products = productService.getActiveProducts();
+		if (products.isEmpty()) {
+			System.out.println("販売中の商品はありません");
+			return;
+		}
+		for (Product product : products) {
+			System.out.printf(
+					"名前:%s | 価格:%d | 在庫:%d%n",
+                    product.getProductName(),
+                    product.getProductPrice(),
+                    product.getProductStock()
+					);
+		}
+    	System.out.println("カートに入れる商品名を入力してください");
+    	String name = scanner.nextLine();
+    	
+    	Product product = productService.getProductByName(name);
+    	
+    	if(product == null) {
+    		System.out.println("その商品は見つかりませんでした。");
+    		return;
+    	}
+    	if(!product.isActive()) {
+    		System.out.println("その商品は販売停止しています。");
+    		return;
+    	}
+    	
+    	System.out.println("数量を入力してください");
+    	int quantity;
+    	try {
+			quantity = Integer.parseInt(scanner.nextLine());
+		} catch (NumberFormatException e) {
+			System.out.println("数量は数字で入力してください");
+			return;
+		}
+    	
+    	boolean ok = cartService.addToCart(user, product.getProductId(), quantity);
+    	if(ok) {
+    		System.out.println(product.getProductName() + "を" + quantity + "個" + "カートに追加しました");
+    	} else {
+			System.out.println("在庫不足のため、カートに追加できませんでした。");
+		}
+	}
 
     //カート一覧
     private void handleShowCart(User user) {
-        Cart cart = cartService.getCart(user);
+        Cart cart = cartService.getOrCreateCart(user);
         List<CartItem> items = cart.getItems();
         System.out.println("\n=== カート内容 ===");
         if (items.isEmpty()) {
             System.out.println("カートは空です。");
             return;
         }
+        
+        int total = 0; 
         for (CartItem cartItem : items) {
             Product product = productService.getProductById(cartItem.getProductId());
             String name = (product != null) ? product.getProductName() : "(削除された商品)";
-            System.out.printf("名前:%s | 数量:%d%n",
-                    name, cartItem.getQuantity());
+            int price = (product != null) ? product.getProductPrice() : 0;
+            int quantity = cartItem.getQuantity();
+            int subtotal = price * quantity;
+            
+            total += subtotal;
+            System.out.printf("名前:%s | 単価:%d円 | 数量:%d | 小計:%d円%n",
+                    name,
+                    price,
+                    quantity,
+                    subtotal
+            );
         }
+        System.out.printf("=== 合計金額: %d円 ===%n", total);
     }
 
     //商品Idで指定して削除
-    //ここもid追加はおかしい
     private void handleRemoveFromCart(User user) {
-        System.out.print("カートから削除したい商品ID: ");
-        int productId = Integer.parseInt(scanner.nextLine());
+        System.out.print("カートから削除したい商品の名前: ");
+        String productname = scanner.nextLine();
+        
+        Product product = productService.getProductByName(productname);
+        if (product == null) {
+			System.out.println("その名前の商品は見つかりません。");
+			return;
+		}
+        
+        int productId = product.getProductId();
         cartService.removeFromCart(user, productId);
         System.out.println("カートから削除しました。");
     }
 
     //注文確定
     private void handleCheckout(User user) {
-        Cart cart = cartService.getCart(user);
+        Cart cart = cartService.getOrCreateCart(user);
         if (cart.getItems().isEmpty()) {
             System.out.println("カートが空です。");
             return;
@@ -501,4 +805,71 @@ public class Menu {
         System.out.println("注文が確定しました。注文ID: " + order.getOrderId() +
                 " / 合計金額: " + order.getTotalAmount() + " 円");
     }
+    
+    public void handleShowOrderHistory(User user) {
+    	List<Order> orders = orderService.getOrdersByUserList(user);
+    	
+    	System.out.println("\n=== 注文履歴一覧 ===");
+    	if (orders.isEmpty()) {
+			System.out.println("まだ注文履歴がありません");
+			return;
+		}
+    	
+    	for (Order order : orders) {
+    		String formattedDateTime = order.getCreateDateTime().format(orderDtf);
+			System.out.printf(
+					"注文ID:%d | 日時:%s | 金額:%d円 | 支払い方法:%d | 配送先:%s%n",
+					order.getOrderId(),
+					formattedDateTime,
+					order.getTotalAmount(),
+					order.getPaymentMethod(),
+					order.getShippingAddress()
+					);
+		}
+    }
+    
+    private void handleShowOrderItemsForUser(User user) {
+        System.out.println("明細を見たい注文IDを入力してください");
+        String idInput = scanner.nextLine();
+        int orderId;
+        try {
+            orderId = Integer.parseInt(idInput);
+        } catch (NumberFormatException e) {
+            System.out.println("注文IDは数字で入力してください");
+            return;
+        }
+        
+        Order order = orderService.getUserOrderItemsById(orderId);
+        if (order == null) {
+            System.out.println("その注文は存在しません。");
+            return;
+        }
+        if (order.getOrderUserId() != user.getUserId()) {
+            System.out.println("自分の注文ではありません。");
+            return;
+        }
+
+        // 明細を取得
+        List<OrderItem> items = orderService.getOrderItemsByOrderId(orderId);
+
+        System.out.println("\n=== 注文ID " + orderId + " の明細 ===");
+        if (items.isEmpty()) {
+            System.out.println("この注文には明細がありません。");
+            return;
+        }
+
+        for (OrderItem item : items) {
+            Product p = productService.getProductById(item.getItemId());
+            String name = (p != null) ? p.getProductName() : "(削除された商品)";
+
+            System.out.printf(
+                    "名前:%s | 数量:%d | 小計:%d円%n",
+                    name,
+                    item.getItemQuantity(),
+                    item.getLineTotal()
+            );
+        }
+    }
+    
+    private final DateTimeFormatter orderDtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 }

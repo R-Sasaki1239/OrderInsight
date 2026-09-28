@@ -73,5 +73,22 @@ public class OrderService {
 		cart.clear();
 		
 		return order;
-	}  
+	}
+	
+//	注文一覧用
+	public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+	
+	public List<OrderItem> getOrderItemsByOrderId(int orderId){
+		return orderItemRepository.findByOrderId(orderId);
+	}
+	
+	public List<Order> getOrdersByUserList(User user){
+		return orderRepository.findByUserId(user.getUserId());
+	}
+	
+	public Order getUserOrderItemsById(int orderId) {
+		return orderRepository.findById(orderId);
+	}
 }

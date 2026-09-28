@@ -13,7 +13,16 @@ public class InMemoryProductRepository implements ProductRepository{
 	public InMemoryProductRepository() {
 		products.add(new Product(1, "りんご", 120, 50, true));
 		products.add(new Product(2, "バナナ", 80, 30, true));
-		products.add(new Product(3, "オレンジ", 150, 0, false));
+		products.add(new Product(3, "いちご", 150, 0, false));
+		products.add(new Product(4, "ぶどう", 400, 200, true));
+		products.add(new Product(5, "すいか", 280, 100, true));
+		products.add(new Product(6, "ビール", 3000, 120, false));
+		products.add(new Product(7, "トマト", 180, 80, true));
+		products.add(new Product(8, "いわし", 200, 1200, false));
+		products.add(new Product(9, "たまご", 360, 1040, true));
+		products.add(new Product(10, "白菜", 250, 123, true));
+		products.add(new Product(11, "牛肉", 300, 290, false));
+		products.add(new Product(12, "羊肉", 400, 39, true));
 	}
 	
 	@Override
